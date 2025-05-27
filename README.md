@@ -1,7 +1,7 @@
 # Jenkins-concepts-from-Beginner-Intermediate-Advanced
 ---
 Let’s create a **simple Node.js application** from scratch that can be used across all Jenkins demos (beginner to advanced). This app will include:
-
+```
 ✅ Node.js backend
 ✅ Basic testing
 ✅ Dockerfile
@@ -9,7 +9,7 @@ Let’s create a **simple Node.js application** from scratch that can be used ac
 ✅ SonarQube-friendly code
 ✅ Deployment-ready for Minikube, EKS, or GitOps
 ✅ Proper folder structure for Jenkins usage
-
+```
 ---
 
 ## 📦 Project Name: `node-jenkins-demo-app`
