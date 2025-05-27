@@ -41,7 +41,7 @@ node-jenkins-demo-app/
 const express = require('express');
 const app = express();
 
-app.get('/', (req, res) => res.send('Hello from Jenkins Demo App!'));
+app.get('/', (req, res) => res.send('<h1>Hello from Jenkins Demo App!</h1>'));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 const PORT = process.env.PORT || 3000;
@@ -139,12 +139,18 @@ pipeline {
       }
     }
 
-    stage('SonarQube Analysis') {
-      steps {
-        withSonarQubeEnv('SonarQube') {
-          sh 'sonar-scanner'
-        }
+    stage('Run Sonarqube') {
+      environment {
+          scannerHome = tool 'sonar-scan';
       }
+      steps {
+          withSonarQubeEnv('MySonar') {
+              sh """
+                  ${scannerHome}/bin/sonar-scanner \
+                 // -Dsonar.projectKey=key-test
+              """
+            }
+        }
     }
 
     stage('Build Docker Image') {
