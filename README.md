@@ -283,11 +283,16 @@ kubectl apply -f k8s/
 docker volume create jenkins_home
 
 # Step 2: Run Jenkins
-docker run -d --name jenkins -p 9090:8080 -v jenkins_home:/var/jenkins_home jenkins/jenkins:lts
+docker run -d --name jenkins -p 9990:8080 -v jenkins_home:/var/jenkins_home jenkins/jenkins:lts
 ```
 
-* Visit: [http://localhost:9090](http://localhost:9090)
+* Visit: [http://localhost:9990](http://10.0.0.146:9990)
 * Initial password: `cat /var/jenkins_home/secrets/initialAdminPassword` (inside container)
+```
+docker exec -it jenkins bash
+```
+![image](https://github.com/user-attachments/assets/66b222bc-dca2-4459-bbf4-948147e9e0c8)
+
 
 ---
 
@@ -297,6 +302,7 @@ docker run -d --name jenkins -p 9090:8080 -v jenkins_home:/var/jenkins_home jenk
 
 * Open Jenkins UI → Dashboard
 * Click “New Item” → Name: `demo-job` → Select “Pipeline” → OK
+![image](https://github.com/user-attachments/assets/c2968bc8-bb2c-4f44-96f0-eaf09cc479bc)
 
 ---
 
@@ -313,6 +319,7 @@ echo "Hello from Jenkins Freestyle Job"
 ```
 
 * Save → Build Now → See Console Output
+![image](https://github.com/user-attachments/assets/07749b42-a7fd-4c71-90e0-8f2c3aa4ca52)
 
 ---
 
@@ -320,7 +327,7 @@ echo "Hello from Jenkins Freestyle Job"
 
 **Demo:**
 
-* Create `Jenkinsfile`:
+* Create `Jenkinsfile-demo-pipeline`:
 
 ```groovy
 pipeline {
@@ -334,20 +341,32 @@ pipeline {
   }
 }
 ```
-
+* Install Pipeline Plugin.
 * In GitHub repo OR copy/paste into Jenkins job
-* Jenkins UI → New Item → “demo-pipeline” → Pipeline → Add Jenkinsfile → Save → Build Now
+* Jenkins UI → New Item → “demo-pipeline” → Pipeline → Add Jenkinsfile-demo-pipeline → Save → Build Now
+![image](https://github.com/user-attachments/assets/0b6b9990-7d22-4ae6-972d-cee22fde8f87)
 
 ---
 
 ### ✅ 5. Connect to GitHub Repo
 
+Push App to GitHub:
+```
+git init
+git add .
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/lily4499/node-jenkins-demo-app.git
+git push -u origin main
+```
 **Demo:**
-
+* Install Git Plugin
 * Jenkins UI → Job Config → Pipeline → Definition: “Pipeline from SCM” → Git
 * Paste GitHub repo URL
 * Add SSH or HTTPS credentials
 * Save → Build Now (or trigger on push)
+![image](https://github.com/user-attachments/assets/add76a60-99a4-4bad-bb67-5ede12d2f985)
+
 
 ---
 
@@ -368,6 +387,7 @@ pipeline {
 * Jenkins UI → Build History → Click a build
 * Click **Workspace** → view files
 * Click **Console Output** → view logs
+![image](https://github.com/user-attachments/assets/f421c23c-e4ca-46c8-a1f2-e8606fa32e30)
 
 ---
 
@@ -390,6 +410,7 @@ pipeline {
   }
 }
 ```
+![image](https://github.com/user-attachments/assets/9ae9e78d-5195-4442-a864-f001f6793a4e)
 
 ---
 
@@ -409,25 +430,66 @@ pipeline {
   }
 }
 ```
+![image](https://github.com/user-attachments/assets/2b652568-1834-4b3a-971d-72be4d7bee5d)
 
 ---
 
 ### ✅ 10. Post-Build Actions (Email, Archive)
 
 **Demo:**
+* Install Email Extension Plugin
 
+Go to: Manage Jenkins → Configure System  
+**Scroll to E-mail Notification**  
+Set SMTP server (e.g. for Gmail: smtp.gmail.com)  
+Click Advanced and configure:  
+SMTP Port: 587  
+Use TLS: ✅ (checked)  
+Username: your-email@gmail.com  
+Password: use an App Password (not your Gmail password)  
+Set Reply-To Address (e.g. your-email@gmail.com)  
+
+**Scroll to Extended E-mail Notification**  
+SMTP server: Same as above (smtp.gmail.com)  
+Default Recipients: your-email@gmail.com  
+Check: Use SMTP Authentication and Use TLS  
+Add SMTP Username/Password again    
+✅ Click "Test configuration by sending test e-mail"
+ 
 * Jenkins UI → Configure Job → Add “Editable Email Notification”
 * Or use this in Jenkinsfile:
 
 ```groovy
-post {
-  success {
-    echo 'Build Successful'
+pipeline {
+  agent any
+
+  stages {
+    stage('Build') {
+      steps {
+        echo "Building..."
+      }
+    }
   }
-  failure {
-    echo 'Build Failed'
+
+  post {
+    success {
+      emailext(
+        subject: "SUCCESS: ${env.JOB_NAME} Build #${env.BUILD_NUMBER}",
+        body: "Good news! Build #${env.BUILD_NUMBER} succeeded.\n\nSee details at: ${env.BUILD_URL}",
+        to: 'your-email@gmail.com'
+      )
+    }
+
+    failure {
+      emailext(
+        subject: "FAILURE: ${env.JOB_NAME} Build #${env.BUILD_NUMBER}",
+        body: "Oops! Build #${env.BUILD_NUMBER} failed.\n\nCheck console at: ${env.BUILD_URL}",
+        to: 'your-email@gmail.com'
+      )
+    }
   }
 }
+
 ```
 
 ---
