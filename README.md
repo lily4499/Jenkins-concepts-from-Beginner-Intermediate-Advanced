@@ -491,8 +491,11 @@ pipeline {
 }
 
 ```
+![image](https://github.com/user-attachments/assets/79cf9150-0e35-4372-b98c-d042d8e64d75)
 
 ---
+
+
 ---
 
 # 🟡 INTERMEDIATE JENKINS CONCEPTS
@@ -555,12 +558,39 @@ pipeline {
 
 **Run:**
 - Click “Build with Parameters” in Jenkins UI
+![image](https://github.com/user-attachments/assets/248ea30f-1c3d-404e-a35b-77500af8749c)
 
 ---
 
 ### ✅ 14. Docker Integration (Build & Push)
 
 **Purpose:** Build Docker image and push to DockerHub
+#### stop and remove the current container
+```
+docker stop jenkins
+docker rm jenkins
+
+```
+
+#### Install Docker in Jenkins Container
+docker exec -u 0 -it jenkins bash
+apt-get update
+apt-get install -y docker.io
+usermod -aG docker jenkins
+exit
+docker restart jenkins
+```
+#### Then build and run it:
+```
+docker build -t jenkins-docker .
+docker run -d \
+  --name jenkins \
+  -u root \  # Run as root for Docker access without permission issues
+  -p 8080:8080 \
+  -v /var/run/docker.sock:/var/run/docker.sock \  # Give Jenkins access to Docker daemon
+  -v jenkins_home:/var/jenkins_home \  # Persist Jenkins data
+  jenkins-docker  # Your custom Jenkins image with Docker CLI + Git installed
+```
 
 **Dockerfile:**
 ```dockerfile
@@ -589,7 +619,7 @@ pipeline {
     }
     stage('Push') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+        withCredentials([usernamePassword(credentialsId: 'lily-docker-credentials', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
           sh 'echo $PASS | docker login -u $USER --password-stdin'
           sh 'docker push $IMAGE:${params.TAG}'
         }
@@ -598,7 +628,11 @@ pipeline {
   }
 }
 ```
+![image](https://github.com/user-attachments/assets/91860d1e-b82e-4996-9e03-334d86adff87)
 
+
+---
+> Tips: The Git issue (fatal: not in a git directory) is more likely caused by a corrupted workspace or missing Git configuration. Clean the Jenkins Workspace.
 ---
 
 ### ✅ 15. SonarQube Integration
