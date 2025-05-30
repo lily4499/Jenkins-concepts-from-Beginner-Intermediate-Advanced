@@ -32,241 +32,6 @@ node-jenkins-demo-app/
 ├── sonar-project.properties
 └── README.md
 ```
-
----
-
-## 📄 app.js
-
-```js
-const express = require('express');
-const app = express();
-
-app.get('/', (req, res) => res.send('<h1>Hello from Jenkins Demo App!</h1>'));
-app.get('/health', (req, res) => res.status(200).send('OK'));
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`App running on port ${PORT}`));
-
-module.exports = app;
-```
-
----
-
-## 📄 package.json
-
-```json
-{
-  "name": "node-jenkins-demo-app",
-  "version": "1.0.0",
-  "description": "Node.js app for Jenkins CI/CD demo",
-  "main": "app.js",
-  "scripts": {
-    "start": "node app.js",
-    "test": "jest"
-  },
-  "author": "LiliTech",
-  "license": "MIT",
-  "dependencies": {
-    "express": "^4.18.2"
-  },
-  "devDependencies": {
-    "jest": "^29.0.0",
-    "supertest": "^6.0.0"
-  }
-}
-```
-
----
-
-## 📄 test/app.test.js
-
-```js
-const request = require('supertest');
-const app = require('../app');
-
-describe('GET /', () => {
-  it('should return 200 and welcome message', async () => {
-    const res = await request(app).get('/');
-    expect(res.statusCode).toEqual(200);
-    expect(res.text).toContain('Hello');
-  });
-});
-```
-
----
-
-## 📄 Dockerfile
-
-```Dockerfile
-FROM node:18
-
-WORKDIR /app
-COPY . .
-RUN npm install
-
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
----
-
-## 📄 Jenkinsfile
-
-(For demo purposes, uses build + test + Docker + push + deploy steps)
-
-```groovy
-pipeline {
-  agent any
-
-  parameters {
-    string(name: 'TAG', defaultValue: '1.0.0', description: 'Image Tag')
-  }
-
-  environment {
-    IMAGE = "laly9999/node-jenkins-demo-app"
-  }
-
-  stages {
-    stage('Install') {
-      steps {
-        sh 'npm install'
-      }
-    }
-
-    stage('Test') {
-      steps {
-        sh 'npm test'
-      }
-    }
-
-    stage('Run Sonarqube') {
-      environment {
-          scannerHome = tool 'sonar-scan';
-      }
-      steps {
-          withSonarQubeEnv('MySonar') {
-              sh """
-                  ${scannerHome}/bin/sonar-scanner \
-                 // -Dsonar.projectKey=key-test
-              """
-            }
-        }
-    }
-
-    stage('Build Docker Image') {
-      steps {
-        sh 'docker build -t $IMAGE:${params.TAG} .'
-      }
-    }
-
-    stage('Push Image') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
-          sh 'echo $PASS | docker login -u $USER --password-stdin'
-          sh 'docker push $IMAGE:${params.TAG}'
-        }
-      }
-    }
-
-    stage('Deploy to K8s') {
-      steps {
-        sh 'kubectl apply -f k8s/'
-      }
-    }
-  }
-
-  post {
-    always {
-      cleanWs()
-    }
-  }
-}
-```
-
----
-
-## 📄 k8s/deployment.yaml
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: node-app
-  labels:
-    app: node-app
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: node-app
-  template:
-    metadata:
-      labels:
-        app: node-app
-    spec:
-      containers:
-        - name: node-app
-          image: laly9999/node-jenkins-demo-app:1.0.0
-          ports:
-            - containerPort: 3000
-```
-
----
-
-## 📄 k8s/service.yaml
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: node-service
-spec:
-  type: NodePort
-  selector:
-    app: node-app
-  ports:
-    - port: 80
-      targetPort: 3000
-      nodePort: 30036
-```
-
----
-
-## 📄 sonar-project.properties
-
-```properties
-sonar.projectKey=node-jenkins-demo-app
-sonar.sources=.
-sonar.tests=./test
-sonar.inclusions=**/*.js
-sonar.test.inclusions=test/**/*.test.js
-sonar.javascript.lcov.reportPaths=coverage/lcov.info
-```
-
----
-
-## Quick Start
-
-```bash
-npm install
-npm test
-docker build -t node-jenkins-demo-app .
-docker run -p 3000:3000 node-jenkins-demo-app
-````
-
-## Run Tests
-
-```bash
-npm test
-```
-
-## Deploy to Minikube
-
-```bash
-kubectl apply -f k8s/
-```
-
-
 ---
 ---
 
@@ -573,6 +338,7 @@ docker rm jenkins
 ```
 
 #### Install Docker in Jenkins Container
+```
 docker exec -u 0 -it jenkins bash
 apt-get update
 apt-get install -y docker.io
@@ -585,7 +351,18 @@ docker restart jenkins
 docker build -t jenkins-docker .
 docker run -d \
   --name jenkins \
+  --restart=always \
+  -p 9990:8080 \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v jenkins_home:/var/jenkins_home \
+  jenkins-docker
+
+
+
+docker run -d \
+  --name jenkins \
   -u root \  # Run as root for Docker access without permission issues
+  --restart=always \
   -p 8080:8080 \
   -v /var/run/docker.sock:/var/run/docker.sock \  # Give Jenkins access to Docker daemon
   -v jenkins_home:/var/jenkins_home \  # Persist Jenkins data
@@ -667,9 +444,12 @@ stage('SonarQube Analysis') {
 **Purpose:** Notify build status via Slack
 
 **Demo:**
+  
 - Install Slack plugin
+- Go to https://api.slack.com/apps 
 - Create app + webhook URL in Slack
 - Jenkins → Manage Jenkins → Configure System → Slack
+- Workspace: yourworkspace.slack.com (just the domain)
 - Add credentials and default channel
 
 **Jenkinsfile:**
@@ -686,6 +466,7 @@ post {
 ### ✅ 17. Archive Artifacts
 
 **Purpose:** Save build output (e.g., `.zip`, `.war`, `.jar`) for download
+> This could include build outputs, logs, reports, or any project files you want to retain after the pipeline finishes.
 
 **Jenkinsfile:**
 ```groovy
@@ -694,7 +475,7 @@ stage('Archive') {
     sh 'zip -r output.zip .'
     archiveArtifacts artifacts: 'output.zip', fingerprint: true
   }
-}
+}   
 ```
 
 ---
