@@ -508,7 +508,9 @@ stage('Approval') {
 
 **Purpose:** Run multiple stages simultaneously to reduce build time
 > you need to update your package.json to include a "lint" script and install a linter (typically ESLint).
-> 
+> You need to create an ESLint config file in your project root : npm init @eslint/config
+> > Tell ESLint you're using Jest : Open your .eslintrc.json and add "jest": true
+
 **Jenkinsfile:**
 ```groovy
 stage('Parallel Tasks') {
