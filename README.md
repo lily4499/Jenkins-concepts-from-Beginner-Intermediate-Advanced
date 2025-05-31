@@ -351,6 +351,7 @@ docker restart jenkins
 docker build -t jenkins-docker .
 docker run -d \
   --name jenkins \
+  -u root \
   --restart=always \
   -p 9990:8080 \
   -v /var/run/docker.sock:/var/run/docker.sock \
@@ -446,20 +447,21 @@ stage('SonarQube Analysis') {
 **Demo:**
   
 - Install Slack plugin
-- Go to https://api.slack.com/apps 
-- Create app + webhook URL in Slack
+- Go to your slack account (https://app.slack.com/apps-manage)
+- Tools ad settings -> click Manage apps -> Search Jenkins CI -> Add to slack
 - Jenkins → Manage Jenkins → Configure System → Slack
-- Workspace: yourworkspace.slack.com (just the domain)
-- Add credentials and default channel
+- Workspace: Team Subdomain: lilcompanyworkspace
+- Add credentials and default channel :  Integration Token Credential ID: Create a secret text
 
 **Jenkinsfile:**
 ```groovy
 post {
   always {
-    slackSend(channel: '#ci-cd', message: "Pipeline Result: ${currentBuild.result}")
+    slackSend(channel: '#jenkins-notify', message: "Pipeline Result: ${currentBuild.result}")
   }
 }
 ```
+![image](https://github.com/user-attachments/assets/bf8339d1-1800-4beb-ac65-b20d898ffe46)
 
 ---
 
@@ -467,7 +469,7 @@ post {
 
 **Purpose:** Save build output (e.g., `.zip`, `.war`, `.jar`) for download
 > This could include build outputs, logs, reports, or any project files you want to retain after the pipeline finishes.
-
+> Install  **zip** on Jenkins
 **Jenkinsfile:**
 ```groovy
 stage('Archive') {
@@ -477,6 +479,12 @@ stage('Archive') {
   }
 }   
 ```
+![image](https://github.com/user-attachments/assets/a18592ef-335e-4f12-abe9-1acb0a5aa1b7)
+
+>You can:  
+> - Download build.zip directly from Jenkins UI  
+> - Use it in a downstream job (e.g., deploy to another environment)  
+> - Keep it as a snapshot for audits or rollbacks
 
 ---
 
@@ -492,23 +500,25 @@ stage('Approval') {
   }
 }
 ```
+![image](https://github.com/user-attachments/assets/40502641-c026-4b68-9255-c4d261f323f1)
 
 ---
 
 ### ✅ 19. Parallel Steps
 
 **Purpose:** Run multiple stages simultaneously to reduce build time
-
+> you need to update your package.json to include a "lint" script and install a linter (typically ESLint).
+> 
 **Jenkinsfile:**
 ```groovy
 stage('Parallel Tasks') {
   parallel {
-    stage('Test') {
+    stage('Test: Ensures that the application logic behaves as expected') {
       steps {
         sh 'npm test'
       }
     }
-    stage('Lint') {
+    stage('Lint: Ensures code style, syntax correctness, and best practices') {
       steps {
         sh 'npm run lint'
       }
@@ -516,6 +526,7 @@ stage('Parallel Tasks') {
   }
 }
 ```
+![image](https://github.com/user-attachments/assets/cfd82e4d-982b-4cd5-a608-699ebb2494af)
 
 ---
 
